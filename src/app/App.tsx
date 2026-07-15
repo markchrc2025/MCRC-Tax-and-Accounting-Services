@@ -3,6 +3,9 @@ import { Navigation } from "./components/Navigation";
 import { Hero } from "./components/Hero";
 import { About } from "./components/About";
 import { Services } from "./components/Services";
+import { Impact } from "./components/Impact";
+import { Team } from "./components/Team";
+import { Compliance } from "./components/Compliance";
 import { Contact } from "./components/Contact";
 import { Footer } from "./components/Footer";
 import { AdminDashboard } from "./components/AdminDashboard";
@@ -60,13 +63,16 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="rd-root">
       <HeadMeta />
       <Navigation />
       <main>
         <Hero />
         <About />
         <Services />
+        <Impact />
+        <Team />
+        <Compliance />
         <Contact />
       </main>
       <Footer />

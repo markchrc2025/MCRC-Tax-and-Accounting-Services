@@ -1,254 +1,251 @@
-import { Mail, Phone, MapPin, Clock, Send } from "lucide-react";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Textarea } from "./ui/textarea";
-import { Label } from "./ui/label";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { projectId, publicAnonKey } from "../utils/supabase/info";
 
+const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const DAY_MS = 86400000;
+const SLOT_LABELS = ["9:00 AM", "10:30 AM", "1:00 PM", "2:30 PM", "4:00 PM", "5:00 PM"];
+
+const CONTACT_ENDPOINT = `https://${projectId}.supabase.co/functions/v1/make-server-212365c9/contact`;
+
+function iso(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** 8 consecutive weekdays (Sundays skipped) starting from base + pageStart days. */
+function weekdaysFrom(base: Date, pageStart: number): Date[] {
+  const cursor = new Date(base);
+  cursor.setDate(cursor.getDate() + pageStart);
+  const dates: Date[] = [];
+  while (dates.length < 8) {
+    if (cursor.getDay() !== 0) dates.push(new Date(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return dates;
+}
+
+const DETAILS = [
+  { k: "Phone", v: <>0947 395 9157</> },
+  { k: "Email", v: <>christian.canlubo@mcrctas.com</> },
+  { k: "Office", v: <>Brgy. San Roque,<br />Marikina City</> },
+  { k: "Hours", v: <>Mon–Fri · 8:00 AM – 6:00 PM<br />Sat · 9:00 AM – 1:00 PM</> },
+];
+
 export function Contact() {
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    company: "",
-    message: ""
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [contactTab, setContactTab] = useState<"message" | "booking">("message");
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // ----- "today" anchor (real current date, per handoff) -----
+  const base = useMemo(() => {
+    const b = new Date();
+    b.setHours(0, 0, 0, 0);
+    return b;
+  }, []);
+
+  // ----- Message form -----
+  const [msg, setMsg] = useState({ name: "", email: "", phone: "", company: "", message: "" });
+  const [sending, setSending] = useState(false);
+
+  const submitMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-
+    setSending(true);
     try {
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-212365c9/contact`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${publicAnonKey}`
-          },
-          body: JSON.stringify({
-            name: formData.name,
-            email: formData.email,
-            phone: formData.phone,
-            service: formData.company,
-            message: formData.message
-          })
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok) {
+      const res = await fetch(CONTACT_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${publicAnonKey}` },
+        body: JSON.stringify({
+          name: msg.name,
+          email: msg.email,
+          phone: msg.phone,
+          service: msg.company,
+          message: msg.message,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
         toast.success(data.message || "Thank you for your message! We'll get back to you soon.");
-        setFormData({
-          name: "",
-          email: "",
-          phone: "",
-          company: "",
-          message: ""
-        });
+        setMsg({ name: "", email: "", phone: "", company: "", message: "" });
       } else {
-        console.error("Contact form submission error:", data.error);
         toast.error(data.error || "Failed to send message. Please try again or contact us directly.");
       }
-    } catch (error) {
-      console.error("Network error while submitting contact form:", error);
+    } catch {
       toast.error("Network error. Please check your connection and try again.");
     } finally {
-      setIsSubmitting(false);
+      setSending(false);
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+  // ----- Scheduler -----
+  const [pageStart, setPageStart] = useState(0);
+  const [selISO, setSelISO] = useState(() => iso(weekdaysFrom(base, 0)[0]));
+  const [selSlot, setSelSlot] = useState(2);
+  const [booking, setBooking] = useState({ name: "", email: "" });
+  const [bookingSending, setBookingSending] = useState(false);
+
+  const days = useMemo(() => weekdaysFrom(base, pageStart), [base, pageStart]);
+  const rangeLabel = useMemo(() => {
+    const first = days[0], last = days[7];
+    return first.getFullYear() === last.getFullYear() && first.getMonth() === last.getMonth()
+      ? `${MON[first.getMonth()]} ${first.getFullYear()}`
+      : `${MON[first.getMonth()]} ${first.getDate()} – ${MON[last.getMonth()]} ${last.getDate()}, ${last.getFullYear()}`;
+  }, [days]);
+  const prevDisabled = pageStart === 0;
+
+  const bookingSummary = useMemo(() => {
+    const d = new Date(selISO + "T00:00:00");
+    return `${DOW[d.getDay()]}, ${MON[d.getMonth()]} ${d.getDate()} at ${SLOT_LABELS[selSlot]}`;
+  }, [selISO, selSlot]);
+
+  const jumpDate = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value;
+    if (!v) return;
+    const d = new Date(v + "T00:00:00");
+    const off = Math.round((d.getTime() - base.getTime()) / DAY_MS);
+    setPageStart(Math.max(0, off));
+    setSelISO(v);
+  };
+
+  const submitBooking = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBookingSending(true);
+    try {
+      const res = await fetch(CONTACT_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${publicAnonKey}` },
+        body: JSON.stringify({
+          name: booking.name,
+          email: booking.email,
+          phone: "",
+          service: "Consultation Booking",
+          message: `Consultation booking request for ${bookingSummary}.`,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || `Booking request sent for ${bookingSummary}. We'll confirm shortly.`);
+        setBooking({ name: "", email: "" });
+      } else {
+        toast.error(data.error || "Failed to send booking. Please try again or contact us directly.");
+      }
+    } catch {
+      toast.error("Network error. Please check your connection and try again.");
+    } finally {
+      setBookingSending(false);
+    }
   };
 
   return (
-    <section id="contact" className="py-20 bg-gradient-to-br from-gray-50 to-[#E6F7FF]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section Header */}
-        <div className="text-center mb-16">
-          <h2 className="text-[#00618F] mb-4" style={{ fontSize: "2.5rem", fontWeight: "700" }}>
-            Get In Touch
-          </h2>
-          <p className="text-gray-600 max-w-3xl mx-auto" style={{ fontSize: "1.125rem" }}>
-            Ready to empower your business? Contact us today for a consultation
+    <section id="contact" className="rd-section rd-container">
+      <div className="rd-eyebrow">
+        <span className="num">04</span>
+        <span className="rule" />
+        <span className="label">Contact</span>
+      </div>
+
+      <div className="rd-contact-grid">
+        {/* Left: details */}
+        <div>
+          <h2 className="rd-h2">Let's talk about your business.</h2>
+          <p className="rd-contact-lead">
+            Reach out through any channel and our team will get back to you promptly — usually
+            within one business day.
           </p>
+          <div className="rd-contact-details">
+            {DETAILS.map((d) => (
+              <div className="rd-detail" key={d.k}>
+                <span className="k">{d.k}</span>
+                <div className="v">{d.v}</div>
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-12">
-          {/* Contact Information */}
-          <div className="space-y-8">
-            <div>
-              <h3 className="text-[#00618F] mb-6" style={{ fontSize: "1.875rem", fontWeight: "600" }}>
-                Contact Information
-              </h3>
-              <p className="text-gray-600 mb-8 leading-relaxed">
-                We're here to help your business succeed. Reach out to us through any of the 
-                following channels, and our team will get back to you promptly.
-              </p>
-            </div>
-
-            <div className="space-y-6">
-              <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-[#00618F] rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Phone className="text-white" size={24} />
-                </div>
-                <div>
-                  <h4 className="text-[#00618F] mb-1" style={{ fontWeight: "600" }}>
-                    Phone
-                  </h4>
-                  <p className="text-gray-600">09190660794</p>
-                  <p className="text-gray-600">09171102814</p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-[#00618F] rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Mail className="text-white" size={24} />
-                </div>
-                <div>
-                  <h4 className="text-[#00618F] mb-1" style={{ fontWeight: "600" }}>
-                    Email
-                  </h4>
-                  <p className="text-gray-600">christian.canlubo@mcrctas.com</p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-[#00618F] rounded-lg flex items-center justify-center flex-shrink-0">
-                  <MapPin className="text-white" size={24} />
-                </div>
-                <div>
-                  <h4 className="text-[#00618F] mb-1" style={{ fontWeight: "600" }}>
-                    Office Address
-                  </h4>
-                  <p className="text-gray-600">
-                    Brgy San Roque<br />
-                    Marikina City
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-[#00618F] rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Clock className="text-white" size={24} />
-                </div>
-                <div>
-                  <h4 className="text-[#00618F] mb-1" style={{ fontWeight: "600" }}>
-                    Business Hours
-                  </h4>
-                  <p className="text-gray-600">Monday - Friday: 8:00 AM - 6:00 PM</p>
-                  <p className="text-gray-600">Saturday: 9:00 AM - 1:00 PM</p>
-                  <p className="text-gray-600">Sunday: Closed</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Google Maps Embed */}
-            <div className="bg-gray-200 rounded-lg overflow-hidden h-64">
-              <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3860.5620178747413!2d121.09876614172242!3d14.624008495002553!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3397b838011b0c33%3A0xa7da6b1d2df5d720!2sMidtown%20Subdivision%202%2C%2037%20Dragon%2C%20Marikina%2C%201801%20Metro%20Manila!5e0!3m2!1sen!2sph!4v1759996571444!5m2!1sen!2sph"
-                width="100%"
-                height="100%"
-                style={{ border: 0 }}
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                title="MCRC Office Location - Midtown Subdivision 2, Marikina"
-              ></iframe>
-            </div>
+        {/* Right: card with tabs */}
+        <div className="rd-card-panel">
+          <div className="rd-segment" role="tablist">
+            <button className={contactTab === "message" ? "active" : ""} onClick={() => setContactTab("message")}>Send a message</button>
+            <button className={contactTab === "booking" ? "active" : ""} onClick={() => setContactTab("booking")}>Book a consultation</button>
           </div>
 
-          {/* Contact Form */}
-          <div className="bg-white p-8 rounded-2xl shadow-xl">
-            <h3 className="text-[#00618F] mb-6" style={{ fontSize: "1.875rem", fontWeight: "600" }}>
-              Send Us a Message
-            </h3>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <Label htmlFor="name">Full Name *</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                  className="mt-1"
-                  placeholder="Juan dela Cruz"
-                />
+          {contactTab === "message" ? (
+            <form className="rd-panel-body" onSubmit={submitMessage}>
+              <div className="rd-panel-eyebrow">Send us a message</div>
+              <div className="rd-field-grid">
+                <label className="rd-field">Full name *
+                  <input type="text" required placeholder="Juan dela Cruz" value={msg.name} onChange={(e) => setMsg({ ...msg, name: e.target.value })} />
+                </label>
+                <label className="rd-field">Email address *
+                  <input type="email" required placeholder="juan@example.com" value={msg.email} onChange={(e) => setMsg({ ...msg, email: e.target.value })} />
+                </label>
+                <label className="rd-field">Phone number
+                  <input type="tel" placeholder="+63 947 395 9157" value={msg.phone} onChange={(e) => setMsg({ ...msg, phone: e.target.value })} />
+                </label>
+                <label className="rd-field">Company
+                  <input type="text" placeholder="Your company" value={msg.company} onChange={(e) => setMsg({ ...msg, company: e.target.value })} />
+                </label>
               </div>
-
-              <div>
-                <Label htmlFor="email">Email Address *</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                  className="mt-1"
-                  placeholder="juan@example.com"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  className="mt-1"
-                  placeholder="+63 917-123-4567"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="company">Company Name</Label>
-                <Input
-                  id="company"
-                  name="company"
-                  value={formData.company}
-                  onChange={handleChange}
-                  className="mt-1"
-                  placeholder="Your Company"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="message">Message *</Label>
-                <Textarea
-                  id="message"
-                  name="message"
-                  value={formData.message}
-                  onChange={handleChange}
-                  required
-                  className="mt-1 min-h-[120px]"
-                  placeholder="Tell us about your needs..."
-                />
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full bg-[#00618F] hover:bg-[#004d73]"
-                size="lg"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Sending..." : "Send Message"}
-                <Send className="ml-2" size={20} />
-              </Button>
+              <label className="rd-field full">Message *
+                <textarea required placeholder="Tell us about your needs…" value={msg.message} onChange={(e) => setMsg({ ...msg, message: e.target.value })} />
+              </label>
+              <button type="submit" className="rd-btn rd-btn-primary" disabled={sending}>
+                {sending ? "Sending…" : <>Send Message <span className="arrow">→</span></>}
+              </button>
             </form>
-          </div>
+          ) : (
+            <form className="rd-panel-body" onSubmit={submitBooking}>
+              <div className="rd-panel-eyebrow">Book a free consultation</div>
+              <p className="rd-panel-note">Pick a day and time for a 30-minute intro call with our team.</p>
+
+              <div className="rd-sched-row">
+                <span className="lbl">Select a date</span>
+                <div className="rd-sched-controls">
+                  <label className="rd-jump">Jump to
+                    <input type="date" min={iso(base)} onChange={jumpDate} />
+                  </label>
+                  <button type="button" className="rd-weekbtn" aria-label="Previous week" disabled={prevDisabled} onClick={() => setPageStart((p) => Math.max(0, p - 7))}>‹</button>
+                  <button type="button" className="rd-weekbtn" aria-label="Next week" onClick={() => setPageStart((p) => p + 7)}>›</button>
+                </div>
+              </div>
+              <div className="rd-range">{rangeLabel}</div>
+
+              <div className="rd-daygrid">
+                {days.map((d) => {
+                  const on = iso(d) === selISO;
+                  return (
+                    <button type="button" key={iso(d)} className={`rd-day${on ? " on" : ""}`} onClick={() => setSelISO(iso(d))}>
+                      <span className="dow">{DOW[d.getDay()]}</span>
+                      <span className="d">{d.getDate()}</span>
+                      <span className="mon">{MON[d.getMonth()]}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="rd-slots-label">Available times</div>
+              <div className="rd-slots">
+                {SLOT_LABELS.map((label, i) => (
+                  <button type="button" key={label} className={`rd-slot${i === selSlot ? " on" : ""}`} onClick={() => setSelSlot(i)}>{label}</button>
+                ))}
+              </div>
+
+              <div className="rd-field-grid">
+                <label className="rd-field">Full name *
+                  <input type="text" required placeholder="Juan dela Cruz" value={booking.name} onChange={(e) => setBooking({ ...booking, name: e.target.value })} />
+                </label>
+                <label className="rd-field">Email address *
+                  <input type="email" required placeholder="juan@example.com" value={booking.email} onChange={(e) => setBooking({ ...booking, email: e.target.value })} />
+                </label>
+              </div>
+
+              <div className="rd-summary">
+                <span className="check">✓</span>
+                <span>Your call: <strong>{bookingSummary}</strong></span>
+              </div>
+              <button type="submit" className="rd-btn rd-btn-gold" disabled={bookingSending}>
+                {bookingSending ? "Sending…" : <>Confirm Booking <span>→</span></>}
+              </button>
+            </form>
+          )}
         </div>
       </div>
     </section>
