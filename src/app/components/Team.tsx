@@ -1,14 +1,7 @@
-/*
- * About the Accountant.
- *
- * The founder headshot (christian-canlubo.png) could not be pulled through the
- * design API (it exceeds the 256 KiB file-read cap), so the portrait renders as
- * an on-brand monogram. To use the real photo: drop it at
- * `src/assets/christian-canlubo.png`, then:
- *   import portrait from "figma:asset/christian-canlubo.png";
- * and pass it below as the background image of `.rd-portrait` (removing the
- * `monogram` class).
- */
+// About the Accountant. Portrait is the client-provided founder headshot,
+// optimized for the web (760px-wide JPEG).
+import portrait from "figma:asset/christian-canlubo.jpg";
+
 export function Team() {
   return (
     <section id="team" className="rd-section rd-container rd-team">
@@ -20,9 +13,7 @@ export function Team() {
 
       <div className="rd-team-grid">
         <div className="rd-portrait-wrap">
-          <div className="rd-portrait monogram" role="img" aria-label="Christian Canlubo">
-            <span className="mono">CC</span>
-          </div>
+          <div className="rd-portrait" role="img" aria-label="Christian Canlubo" style={{ backgroundImage: `url(${portrait})` }} />
         </div>
 
         <div>

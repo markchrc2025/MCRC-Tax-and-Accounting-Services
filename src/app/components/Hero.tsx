@@ -1,5 +1,5 @@
 import { LogoMark } from "./Logo";
-import heroBanner from "figma:asset/0ee3ed2586559c8454135cfc03717b0142fead1b.png";
+import heroBanner from "figma:asset/hero.jpg";
 
 const NAV_LINKS = [
   { label: "Home", id: "home" },
