@@ -1,97 +1,88 @@
-import { Menu, X } from "lucide-react";
-import { useState } from "react";
-import { Button } from "./ui/button";
-import { ImageWithFallback } from "./figma/ImageWithFallback";
-import logo from "figma:asset/3ed66585703accd1fb782894b7387ddb00993102.png";
+import { useEffect, useState } from "react";
+import { LogoMark } from "./Logo";
+
+const NAV_LINKS = [
+  { label: "Home", id: "home" },
+  { label: "About", id: "about" },
+  { label: "Services", id: "services" },
+  { label: "Team", id: "team" },
+  { label: "Contact", id: "contact" },
+];
+
+function scrollToId(id: string) {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: "smooth" });
+}
 
 export function Navigation() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  const scrollToSection = (id: string) => {
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
-      setIsMenuOpen(false);
-    }
+  // Desktop sticky header reveals once the user scrolls past the hero (~520px).
+  useEffect(() => {
+    const onScroll = () => setScrolled((window.pageYOffset || document.documentElement.scrollTop || 0) > 520);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const go = (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    setMenuOpen(false);
+    scrollToId(id);
   };
 
-  const navItems = [
-    { label: "Home", id: "home" },
-    { label: "About", id: "about" },
-    { label: "Services", id: "services" },
-    { label: "Contact", id: "contact" },
-  ];
-
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <button
-            onClick={() => scrollToSection("home")}
-            className="flex items-center space-x-2 hover:opacity-80 transition-opacity"
-          >
-            <div className="w-10 h-10 flex-shrink-0">
-              <ImageWithFallback src={logo} alt="MCRC Logo" className="w-full h-full object-contain" />
-            </div>
-            <span className="text-[#00618F] tracking-tight hidden sm:inline" style={{ fontSize: "1.25rem", fontWeight: "700" }}>
-              MCRC Tax & Accounting
+    <>
+      {/* Desktop sticky header */}
+      <div className={`rd-sticky${scrolled ? " is-visible" : ""}`}>
+        <div className="rd-sticky-inner">
+          <a href="#home" className="rd-logo" onClick={(e) => go(e, "home")}>
+            <LogoMark size={40} variant="dark" />
+            <span className="name">
+              <span className="mcrc" style={{ fontSize: 24 }}>MCRC</span>
+              <span className="tag" style={{ fontSize: 9 }}>Tax &amp; Accounting</span>
             </span>
-          </button>
-
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
-            {navItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => scrollToSection(item.id)}
-                className="text-gray-700 hover:text-[#00618F] transition-colors"
-              >
-                {item.label}
-              </button>
+          </a>
+          <nav className="rd-nav" aria-label="Primary">
+            {NAV_LINKS.map((l) => (
+              <a key={l.id} href={`#${l.id}`} onClick={(e) => go(e, l.id)}>{l.label}</a>
             ))}
-            <Button
-              onClick={() => scrollToSection("contact")}
-              className="bg-[#00618F] hover:bg-[#004d73]"
-            >
-              Get Started
-            </Button>
-          </div>
-
-          {/* Mobile Menu Button */}
-          <button
-            className="md:hidden p-2"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-          >
-            {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+            <a href="#contact" className="rd-btn rd-btn-primary" style={{ padding: "12px 24px", fontSize: "14.5px", fontWeight: 600 }} onClick={(e) => go(e, "contact")}>
+              Request a Consultation <span className="arrow">→</span>
+            </a>
+          </nav>
         </div>
-
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="md:hidden py-4 border-t border-gray-200">
-            <div className="flex flex-col space-y-4">
-              {navItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => scrollToSection(item.id)}
-                  className="text-gray-700 hover:text-[#00618F] transition-colors text-left px-4"
-                >
-                  {item.label}
-                </button>
-              ))}
-              <div className="px-4 pt-2">
-                <Button
-                  onClick={() => scrollToSection("contact")}
-                  className="w-full bg-[#00618F] hover:bg-[#004d73]"
-                >
-                  Get Started
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
-    </nav>
+
+      {/* Mobile top bar */}
+      <div className="rd-mobilebar">
+        <a href="#home" className="rd-logo" onClick={(e) => go(e, "home")}>
+          <LogoMark size={34} variant="dark" />
+          <span className="name">
+            <span className="mcrc" style={{ fontSize: 20 }}>MCRC</span>
+            <span className="tag" style={{ fontSize: 8 }}>Tax &amp; Accounting</span>
+          </span>
+        </a>
+        <button
+          className={`rd-hamburger${menuOpen ? " open" : ""}`}
+          aria-label="Toggle menu"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((o) => !o)}
+        >
+          <span /><span /><span />
+        </button>
+      </div>
+      <div className={`rd-mobilemenu${menuOpen ? " open" : ""}`}>
+        <div className="rd-mobilemenu-inner">
+          {NAV_LINKS.map((l) => (
+            <a key={l.id} href={`#${l.id}`} onClick={(e) => go(e, l.id)}>{l.label}</a>
+          ))}
+          <a href="#contact" className="rd-btn rd-btn-gold" onClick={(e) => go(e, "contact")}>
+            Request a Consultation <span>→</span>
+          </a>
+        </div>
+      </div>
+    </>
   );
 }
