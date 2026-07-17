@@ -1,0 +1,15 @@
+{
+  "name": "mcrc-server",
+  "private": true,
+  "version": "1.0.0",
+  "description": "MCRC marketing site server: serves the static build and handles contact/booking submissions (Postgres + email).",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "nodemailer": "^6.9.15",
+    "pg": "^8.13.1"
+  }
+}

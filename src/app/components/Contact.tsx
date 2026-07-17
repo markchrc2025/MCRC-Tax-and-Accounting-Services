@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { projectId, publicAnonKey } from "../utils/supabase/info";
 
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DAY_MS = 86400000;
 const SLOT_LABELS = ["9:00 AM", "10:30 AM", "1:00 PM", "2:30 PM", "4:00 PM", "5:00 PM"];
 
-const CONTACT_ENDPOINT = `https://${projectId}.supabase.co/functions/v1/make-server-212365c9/contact`;
+// Same-origin API served by the Node backend (server/index.js).
+const CONTACT_ENDPOINT = "/api/contact";
 
 function iso(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -52,12 +52,13 @@ export function Contact() {
     try {
       const res = await fetch(CONTACT_ENDPOINT, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${publicAnonKey}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          type: "message",
           name: msg.name,
           email: msg.email,
           phone: msg.phone,
-          service: msg.company,
+          company: msg.company,
           message: msg.message,
         }),
       });
@@ -111,12 +112,13 @@ export function Contact() {
     try {
       const res = await fetch(CONTACT_ENDPOINT, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${publicAnonKey}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          type: "booking",
           name: booking.name,
           email: booking.email,
-          phone: "",
-          service: "Consultation Booking",
+          bookingDate: selISO,
+          bookingTime: SLOT_LABELS[selSlot],
           message: `Consultation booking request for ${bookingSummary}.`,
         }),
       });

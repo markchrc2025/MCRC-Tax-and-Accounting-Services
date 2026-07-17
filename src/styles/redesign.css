@@ -32,8 +32,9 @@
 .rd-root *::before,
 .rd-root *::after { box-sizing: border-box; }
 
-.rd-root a { color: var(--gold-text); text-decoration: none; }
-.rd-root a:hover { color: var(--navy); }
+.rd-root a { text-decoration: none; }
+.rd-root a:not(.rd-btn) { color: var(--gold-text); }
+.rd-root a:not(.rd-btn):hover { color: var(--navy); }
 
 /* Section shell -------------------------------------------------- */
 .rd-section { padding: clamp(56px, 8vw, 110px) clamp(24px, 5vw, 72px); }
@@ -103,7 +104,7 @@
   border-bottom: 1px solid var(--border); box-shadow: 0 6px 24px rgba(14, 42, 69, 0.10);
 }
 .rd-nav { display: flex; align-items: center; gap: 34px; }
-.rd-nav a { font-size: 15px; font-weight: 500; color: var(--slate); }
+.rd-nav a:not(.rd-btn) { font-size: 15px; font-weight: 500; color: var(--slate); }
 .rd-nav a.active,
 .rd-nav a:first-child { font-weight: 600; }
 .rd-nav a:not(.rd-btn):hover { color: var(--navy); }
@@ -140,7 +141,7 @@
   }
   .rd-mobilemenu.open { max-height: 420px; }
   .rd-mobilemenu-inner { display: flex; flex-direction: column; gap: 4px; padding: 16px 20px 24px; }
-  .rd-mobilemenu a { color: var(--cream); font-size: 17px; font-weight: 500; padding: 12px 4px; }
+  .rd-mobilemenu a:not(.rd-btn) { color: var(--cream); font-size: 17px; font-weight: 500; padding: 12px 4px; }
   .rd-mobilemenu a:hover { color: var(--gold-light); }
   .rd-mobilemenu .rd-btn-gold { margin-top: 12px; width: 100%; }
 }
@@ -161,8 +162,8 @@
   position: absolute; top: 38px; right: 72px; z-index: 3;
   display: flex; align-items: center; gap: 34px;
 }
-.rd-hero-nav a { font-size: 15px; font-weight: 500; color: #dbe6f1; }
-.rd-hero-nav a:first-of-type { font-weight: 600; color: #fbfaf7; }
+.rd-hero-nav a:not(.rd-btn) { font-size: 15px; font-weight: 500; color: #dbe6f1; }
+.rd-hero-nav a:not(.rd-btn):first-of-type { font-weight: 600; color: #fbfaf7; }
 .rd-hero-nav a:not(.rd-btn):hover { color: #fff; }
 .rd-hero-inner { position: relative; padding: 104px clamp(24px, 5vw, 72px) 88px; max-width: 760px; }
 .rd-hero-lockup { display: flex; align-items: center; gap: 20px; margin-bottom: 38px; }
